@@ -11,6 +11,10 @@ export class ApprovalChargeRepository{
         }
 
         async findApprovalCharge(address:string,contract:string){
-            return await this.approvalChargeModel.findOne({address:address,contract:contract}).lean()
+            return await this.approvalChargeModel.findOne({address:address,contract:contract,delete_status:false}).lean()
+        }
+
+        async deleteChargeApproval(address:string,id_smart:string){
+            return await this.approvalChargeModel.findOneAndUpdate({address:address,contract:id_smart},{$set:{delete_status:true}})
         }
 }

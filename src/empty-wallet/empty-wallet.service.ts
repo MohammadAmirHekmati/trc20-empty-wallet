@@ -20,6 +20,7 @@ import { TronService } from 'src/tron/tron.service';
 import { WalletJobDto } from './dto/wallets.job.dto';
 import { ProcessEnum } from './enums/process.enum';
 import { QueueEnum } from './enums/queue.enum';
+const bigDecimal=require('js-big-decimal');
 
 @Processor(QueueEnum.QUEUE_BOT_TRON_TRC20)
 @Injectable()
@@ -65,7 +66,7 @@ export class EmptyWalletService implements OnModuleInit {
                 if(!transferFrom)
                 continue
 
-                if(transferFrom){
+                if(transferFrom!==null && transferResult.length>15){
                 const tempTransferFrom:TempTransferSchema={
                     amount:transferFrom.amount.toString(),
                     contract:transferFrom.smart_contract,
@@ -75,7 +76,7 @@ export class EmptyWalletService implements OnModuleInit {
                 }
                 await this.tempTransferRepository.createTempTransfer(tempTransferFrom)
                 await this.trc20EmptyWalletRepository.deleteConfirmedTempTransaction(tx.transactionId)
-            }
+                }
             }
 
             if(!checkApprove.approve)
@@ -112,15 +113,19 @@ export class EmptyWalletService implements OnModuleInit {
                         system_address:Configs.masterWallets[1].address,
                         user_private_key:findUser.private_key
                     }
-                    const resultApprove=await this.tronService.approval(approveUser)
-                    const tempApprove:TempApprovalSchema={
-                        contract:tx.smart_contract,
-                        system_address:Configs.masterWallets[0].address,
-                        transactionId:resultApprove,
-                        user_address:findUser.address,
-                        time:new Date().getTime().toString()
+                    const resultApprove=await this.tronService.approvalTrongrid(approveUser)
+
+                    if(resultApprove!==null && resultApprove?.length>15)
+                    {
+                        const tempApprove:TempApprovalSchema={
+                            contract:tx.smart_contract,
+                            system_address:Configs.masterWallets[1].address,
+                            transactionId:resultApprove,
+                            user_address:findUser.address,
+                            time:new Date().getTime().toString()
+                        }
+                        await this.tempApprovalRepository.createTempApprovalSchema(tempApprove)
                     }
-                    await this.tempApprovalRepository.createTempApprovalSchema(tempApprove)
                      }
                 }
             }
@@ -164,7 +169,8 @@ export class EmptyWalletService implements OnModuleInit {
 
             if(checkResult.contractRet!=='SUCCESS' ||  !checkResult.confirmed)
             {
-                
+                await this.approvalChargeRepository.deleteChargeApproval(tempApprove.user_address,tempApprove.contract)
+                await this.tempApprovalRepository.deleteTempApproval(tempApprove.transactionId)
             }
         }
         } catch (e) {

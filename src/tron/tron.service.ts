@@ -13,16 +13,23 @@ import { TransferCoinDto } from './dto/transfer.coin.dto';
 @Injectable()
 export class TronService implements OnModuleInit{
     tronWeb
+    trongridTronweb
     constructor(){
         this.tronWeb = new TronWeb({
             // fullHost: `https://api.trongrid.io`,
             // headers: { "TRON-PRO-API-KEY": `1206fdf8-137f-437f-8940-d0b24aee4827` }
-            fullNode:"http://192.168.35.169:8090",
-            solidityNode:"http://192.168.35.169:8091"
+            fullNode:"http://192.168.35.240:8090",
+            solidityNode:"http://192.168.35.240:8091"
           });
+
+          this.trongridTronweb = new TronWeb({
+            fullHost: `https://api.trongrid.io`,
+            headers: { "TRON-PRO-API-KEY": `a1dd6f88-4bc2-4626-918b-5528198d2f4f` }
+          })
     }
   async onModuleInit() {
     // await this.getBalanceCoin("TKtTie43DwjhZ5a84iqfuK5dw8wvx3XihP")
+    await this.getCurrentBlock()
   }
 
     async approveUser(){
@@ -79,8 +86,9 @@ export class TronService implements OnModuleInit{
       async getBalanceCoin(address: any): Promise<any> {
         try {
           const resultBalance = await this.tronWeb.trx.getBalance(address);
-          console.log(resultBalance)
-          return resultBalance;
+          const res=bigDecimal.divide(resultBalance,1000000,6)
+          console.log(res)
+          return res
         } catch (e) {
           // const result = await HandlerError.errorHandler(e);
           // await this.handlerService.handlerException400("FA", result);
@@ -103,6 +111,29 @@ export class TronService implements OnModuleInit{
           return receipt.txid
         } catch (e) {
           console.log("-------- transfer coin --------")
+          console.log(e)
+        }
+      }
+
+      async getCurrentBlock(){
+        console.log("------------------- current block ---------------")
+        const res1=await this.tronWeb.trx.getCurrentBlock()
+        const res2=await this.trongridTronweb.trx.getCurrentBlock()
+        console.log(res1.block_header.raw_data.number)
+        console.log(res2.block_header.raw_data.number)
+        console.log("-------- final different -----------")
+        console.log(res2.block_header.raw_data.number-res1.block_header.raw_data.number)
+      }
+
+      async approvalTrongrid(approvalDto:ApproveDto):Promise<string>{
+        try {
+          this.trongridTronweb.setPrivateKey(approvalDto.user_private_key);
+          let contract = await this.trongridTronweb.contract().at(approvalDto.contract_address);
+    
+          let result  = await contract.approve(  approvalDto.system_address, Configs.tron.approveMaxUnit).send({  feeLimit: 10000000 })
+          return result
+        } catch (e) {
+          console.log("------------ aproval error --------")
           console.log(e)
         }
       }

@@ -17,6 +17,9 @@ export class ApprovalChargeSchema {
 
   @Prop({type:String})
   amount:string
+
+  @Prop({default:false})
+  delete_status?:boolean
 }
 
 export const approvalChargeSchema = SchemaFactory.createForClass(ApprovalChargeSchema);
